@@ -13,9 +13,6 @@
 #include <algorithm>
 
 
-using std::min;
-
-DfFont *g_font = NULL;
 double g_advanceTime = 0.0;
 double g_frameStartTime = 0.0;
 double g_renderScale = 15.0;
@@ -38,6 +35,19 @@ void DrawVector(Vector2 start, Vector2 direction)
 }
 
 
+void DrawQuad(Vector2 a, Vector2 b, Vector2 c, Vector2 d)
+{
+    a *= g_renderScale;
+    b *= g_renderScale;
+    c *= g_renderScale;
+    d *= g_renderScale;
+    DrawLine(g_window->bmp, a.x, a.y, b.x, b.y, g_colourWhite);
+    DrawLine(g_window->bmp, b.x, b.y, c.x, c.y, g_colourWhite);
+    DrawLine(g_window->bmp, c.x, c.y, d.x, d.y, g_colourWhite);
+    DrawLine(g_window->bmp, d.x, d.y, a.x, a.y, g_colourWhite);
+}
+
+
 const double halfFrontTrack = 0.75;
 const double halfRearTrack = halfFrontTrack;
 const double halfWheelbase = 1.165;
@@ -46,6 +56,7 @@ const double halfLen = len / 2.0;
 const double halfFrontWidth = 0.82;
 const double halfRearWidth = 0.9;
 const double halfWheelSize = 0.35;
+const double halfWheelWidth = 0.15;
 const double mass = 1095.0;
 const double momentInertia = (mass * len * len) / 12.0; // Formula is for a rod.
 const double coefFriction = 0.7;
@@ -66,16 +77,23 @@ struct Wheel
         moveSinceLastUpdate.Normalize();
 
         double slipAngle = moveSinceLastUpdate.AngleBetween(m_front);
-        if (slipAngle > maxSlipAngleRadians)
-            slipAngle = maxSlipAngleRadians;
-        if (slipAngle < -maxSlipAngleRadians)
-            slipAngle = -maxSlipAngleRadians;
-        Vector2 ortho = m_front.GetPerpendicular();
+        slipAngle = std::min(slipAngle, maxSlipAngleRadians);
+        slipAngle = std::max(slipAngle, -maxSlipAngleRadians);
 
         double fractionOfMaxLateralForce = slipAngle / maxSlipAngleRadians;
         double weightOnWheel = mass * gravity / 4.0;
         double forceMagnitude = fractionOfMaxLateralForce * weightOnWheel * coefFriction;
-        m_force = ortho * forceMagnitude;
+        m_force = m_front.GetPerpendicular() * forceMagnitude;
+    }
+
+    void Render() {
+        Vector2 fr = m_front * halfWheelSize;
+        Vector2 ortho = m_front.GetPerpendicular() * halfWheelWidth;
+        Vector2 a = m_pos + fr - ortho;
+        Vector2 b = m_pos + fr + ortho;
+        Vector2 c = m_pos - fr + ortho;
+        Vector2 d = m_pos - fr - ortho;
+        DrawQuad(a, b, c, d);
     }
 };
 
@@ -207,7 +225,7 @@ struct Car
     void Advance()
     {
         const double MAX_STEERING_LOCK = 0.7;
-        m_steeringAngle += g_input.mouseVelX * 0.003;
+        m_steeringAngle += g_input.mouseVelX * 0.002;
         if (m_steeringAngle > MAX_STEERING_LOCK) m_steeringAngle = MAX_STEERING_LOCK;
         if (m_steeringAngle < -MAX_STEERING_LOCK) m_steeringAngle = -MAX_STEERING_LOCK;
 
@@ -229,51 +247,30 @@ struct Car
     }
 
     void Render() {
-        const Vector2 right(m_front.y, -m_front.x);
-
         m_skidmarks.Render();
 
-        
-        //
         // Draw body
-        
+        const Vector2 right(m_front.y, -m_front.x);
         Vector2 a = m_pos + m_front * halfLen - right * halfFrontWidth;
         Vector2 b = a + right * halfFrontWidth * 2.0;
         Vector2 c = m_pos - m_front * halfLen + right * halfRearWidth;
         Vector2 d = c - right * halfRearWidth * 2.0;
-        a *= g_renderScale;
-        b *= g_renderScale;
-        c *= g_renderScale;
-        d *= g_renderScale;
+        DrawQuad(a, b, c, d);
 
-        DrawLine(g_window->bmp, a.x, a.y, b.x, b.y, g_colourWhite);
-        DrawLine(g_window->bmp, b.x, b.y, c.x, c.y, g_colourWhite);
-        DrawLine(g_window->bmp, c.x, c.y, d.x, d.y, g_colourWhite);
-        DrawLine(g_window->bmp, d.x, d.y, a.x, a.y, g_colourWhite);
-
-
-        //
         // Draw Wheels
-
         for (int i = 0; i < 4; i++) {
-            Vector2 a = m_wheels[i].m_pos + m_wheels[i].m_front * halfWheelSize;
-            Vector2 b = a - m_wheels[i].m_front * halfWheelSize * 2.0;
-            a *= g_renderScale;
-            b *= g_renderScale;
-            DrawLine(g_window->bmp, a.x, a.y, b.x, b.y, g_colourWhite);
-
-            //DrawVector(m_wheels[i].m_pos, m_wheels[i].m_force * 0.005);
+            m_wheels[i].Render();
         }
 
         double mph = m_vel.Len() * 3600.0 / 1609.3;
-        DrawTextLeft(g_font, g_colourWhite, g_window->bmp, 10, 10, "MPH: %.1f", mph);
-        DrawTextRight(g_font, g_colourWhite, g_window->bmp, g_window->bmp->width - 10, 10, "Move mouse to steer. Right button accelerate. Left button decelerate.");
+        DrawTextLeft(g_defaultFont, g_colourWhite, g_window->bmp, 10, 10, "MPH: %.1f", mph);
+        DrawTextRight(g_defaultFont, g_colourWhite, g_window->bmp, g_window->bmp->width - 10, 10, "Move mouse to steer. Right button accelerate. Left button decelerate.");
+        DrawTextRight(g_defaultFont, g_colourWhite, g_window->bmp, g_window->bmp->width - 10, 30, "Escape to quit.");
     }
 };
 
 
-int WINAPI WinMain(HINSTANCE _hInstance, HINSTANCE /*_hPrevInstance*/, 
-                   LPSTR cmdLine, int /*_iCmdShow*/)
+int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 {
     // Setup the window
     int width, height;
@@ -283,20 +280,20 @@ int WINAPI WinMain(HINSTANCE _hInstance, HINSTANCE /*_hPrevInstance*/,
     HideMouse();
     ClearBitmap(g_window->bmp, g_colourWhite);
 
-    g_font = DfCreateFont("Arial", 13, 5);
+    g_defaultFont = DfCreateFont("Arial", 13, 5);
 
     Car car;
     ClearBitmap(g_window->bmp, g_colourBlack);
     InputManagerAdvance();
 
     // Continue to display the window until the user presses escape or clicks the close icon
-    while (!g_window->windowClosed)
+    while (!g_window->windowClosed && !g_input.keys[KEY_ESC])
     {
         InputManagerAdvance();
 
         double now = DfGetTime();
         g_advanceTime = now - g_frameStartTime;
-        g_advanceTime = min(g_advanceTime, 0.1);
+        g_advanceTime = std::min(g_advanceTime, 0.1);
         g_frameStartTime = now;
 
         // Advance Physics
