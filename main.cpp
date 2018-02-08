@@ -18,7 +18,7 @@ using std::min;
 DfFontAa *g_font = NULL;
 double g_advanceTime = 0.0;
 double g_frameStartTime = 0.0;
-double g_renderScale = 18.0;
+double g_renderScale = 15.0;
 
 
 void DrawVector(Vector2 start, Vector2 direction)
@@ -102,9 +102,14 @@ struct Skidmarks
     }
 
     void Render() {
+        float invMaxItems = 127.5f / MAX_ITEMS;
         for (int i = 0; i < MAX_ITEMS; i++) {
             if (m_positions[i].x > 0.0) {
-                PutPix(g_window->bmp, m_positions[i].x * g_renderScale, m_positions[i].y * g_renderScale, g_colourWhite);
+                int distFromHead = m_head - i;
+                if (distFromHead <= 0)
+                    distFromHead += MAX_ITEMS;
+                int c = 128 - distFromHead * invMaxItems;
+                PutPix(g_window->bmp, m_positions[i].x * g_renderScale, m_positions[i].y * g_renderScale, Colour(c, c, c));
             }
         }
     }
@@ -131,13 +136,13 @@ struct Car
         m_steeringAngle = 0.0;
         m_advanceTimeRemainder = 0.0;
 
-        UpdateWheels();
+        UpdateWheelsPosAndOrientation();
         for (int i = 0; i < 4; i++) {
             m_wheels[i].m_prevPos = m_wheels[i].m_pos;
         }
     }
 
-    void UpdateWheels() {
+    void UpdateWheelsPosAndOrientation() {
         for (int i = 0; i < 4; i++) {
             m_wheels[i].m_prevPos = m_wheels[i].m_pos;
         }
@@ -160,7 +165,6 @@ struct Car
         // Calculate forces, acceleration and angular acceleration.
         Vector2 accel;
         double angularAccel = 0.0;
-
         for (int i = 0; i < 4; i++) {
             m_wheels[i].CalcLateralForce();
             accel += m_wheels[i].m_force;
@@ -181,8 +185,7 @@ struct Car
         m_pos += m_vel * physicsTimestep;
         m_front.Rotate(m_angVel * physicsTimestep);
         m_front.Normalize();
-
-        UpdateWheels();
+        UpdateWheelsPosAndOrientation();
     }
 
     void Advance()
@@ -193,9 +196,9 @@ struct Car
         if (m_steeringAngle < -MAX_STEERING_LOCK) m_steeringAngle = -MAX_STEERING_LOCK;
 
         if (g_input.rmb)
-            m_vel += m_front * (g_advanceTime * 3.0);
+            m_vel += m_front * (g_advanceTime * 4.0);
         if (g_input.lmb)
-            m_vel -= m_front * (g_advanceTime * 6.0);
+            m_vel -= m_front * (g_advanceTime * 4.0);
 
         double timeToAdvance = g_advanceTime + m_advanceTimeRemainder;
         while (timeToAdvance > 0.0) {
@@ -243,7 +246,7 @@ struct Car
             b *= g_renderScale;
             DrawLine(g_window->bmp, a.x, a.y, b.x, b.y, g_colourWhite);
 
-            DrawVector(m_wheels[i].m_pos, m_wheels[i].m_force * 0.005);
+            //DrawVector(m_wheels[i].m_pos, m_wheels[i].m_force * 0.005);
         }
 
         double mph = m_vel.Len() * 3600.0 / 1609.3;
@@ -286,7 +289,7 @@ int WINAPI WinMain(HINSTANCE _hInstance, HINSTANCE /*_hPrevInstance*/,
         car.Render();
 
         UpdateWin();
-        DfSleepMillisec(50);
+        DfSleepMillisec(30);
     }
 
     return 0;
