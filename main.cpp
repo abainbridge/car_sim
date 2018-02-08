@@ -50,6 +50,8 @@ const double mass = 1095.0;
 const double momentInertia = (mass * len * len) / 12.0; // Formula is for a rod.
 const double coefFriction = 0.7;
 const double physicsTimestep = 0.002;
+const double gravity = 9.81;
+const double maxSlipAngleRadians = 0.07;
 
 
 struct Wheel
@@ -64,15 +66,16 @@ struct Wheel
         moveSinceLastUpdate.Normalize();
 
         double slipAngle = moveSinceLastUpdate.AngleBetween(m_front);
-        if (slipAngle > 0.07)
-            slipAngle = 0.07;
-        if (slipAngle < -0.07)
-            slipAngle = -0.07;
+        if (slipAngle > maxSlipAngleRadians)
+            slipAngle = maxSlipAngleRadians;
+        if (slipAngle < -maxSlipAngleRadians)
+            slipAngle = -maxSlipAngleRadians;
         Vector2 ortho = m_front.GetPerpendicular();
-        m_force = ortho * 20.0 * slipAngle;
 
-        double weightOnWheel = mass / 4.0;
-        m_force *= weightOnWheel * coefFriction;
+        double fractionOfMaxLateralForce = slipAngle / maxSlipAngleRadians;
+        double weightOnWheel = mass * gravity / 4.0;
+        double forceMagnitude = fractionOfMaxLateralForce * weightOnWheel * coefFriction;
+        m_force = ortho * forceMagnitude;
     }
 };
 
@@ -185,14 +188,14 @@ struct Car
     void Advance()
     {
         const double MAX_STEERING_LOCK = 0.7;
-        m_steeringAngle += g_input.mouseVelX * 0.005;
+        m_steeringAngle += g_input.mouseVelX * 0.003;
         if (m_steeringAngle > MAX_STEERING_LOCK) m_steeringAngle = MAX_STEERING_LOCK;
         if (m_steeringAngle < -MAX_STEERING_LOCK) m_steeringAngle = -MAX_STEERING_LOCK;
 
         if (g_input.rmb)
-            m_vel *= 1.01;
+            m_vel += m_front * (g_advanceTime * 3.0);
         if (g_input.lmb)
-            m_vel *= 0.99;
+            m_vel -= m_front * (g_advanceTime * 6.0);
 
         double timeToAdvance = g_advanceTime + m_advanceTimeRemainder;
         while (timeToAdvance > 0.0) {
