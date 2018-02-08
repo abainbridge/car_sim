@@ -3,7 +3,7 @@
 
 // Deadfrog lib headers
 #include "df_time.h"
-#include "df_font_aa.h"
+#include "df_font.h"
 #include "df_window.h"
 
 // Platform headers
@@ -15,7 +15,7 @@
 
 using std::min;
 
-DfFontAa *g_font = NULL;
+DfFont *g_font = NULL;
 double g_advanceTime = 0.0;
 double g_frameStartTime = 0.0;
 double g_renderScale = 15.0;
@@ -183,6 +183,22 @@ struct Car
 
         // Update position and orientation.
         m_pos += m_vel * physicsTimestep;
+        if (m_pos.x < 0) {
+            m_pos.x = 0;
+            m_vel.x = -m_vel.x * 0.5;
+        }
+        else if (m_pos.x > g_window->bmp->width / g_renderScale) {
+            m_pos.x = g_window->bmp->width / g_renderScale;
+            m_vel.x = -m_vel.x * 0.5;
+        }
+        if (m_pos.y < 0) {
+            m_pos.y = 0;
+            m_vel.y = -m_vel.y * 0.5;
+        }
+        else if (m_pos.y > g_window->bmp->height / g_renderScale) {
+            m_pos.y = g_window->bmp->height / g_renderScale;
+            m_vel.y = -m_vel.y * 0.5;
+        }
         m_front.Rotate(m_angVel * physicsTimestep);
         m_front.Normalize();
         UpdateWheelsPosAndOrientation();
@@ -250,7 +266,8 @@ struct Car
         }
 
         double mph = m_vel.Len() * 3600.0 / 1609.3;
-        DrawTextLeftAa(g_font, g_colourWhite, g_window->bmp, 10, 10, 20, "MPH: %.1f", mph);
+        DrawTextLeft(g_font, g_colourWhite, g_window->bmp, 10, 10, "MPH: %.1f", mph);
+        DrawTextRight(g_font, g_colourWhite, g_window->bmp, g_window->bmp->width - 10, 10, "Move mouse to steer. Right button accelerate. Left button decelerate.");
     }
 };
 
@@ -261,10 +278,12 @@ int WINAPI WinMain(HINSTANCE _hInstance, HINSTANCE /*_hPrevInstance*/,
     // Setup the window
     int width, height;
     GetDesktopRes(&width, &height);
-    CreateWin(width - 200, height - 100, WT_WINDOWED, "Car sim");
+//    CreateWin(width - 200, height - 100, WT_WINDOWED, "Car sim");
+    CreateWin(width, height, WT_FULLSCREEN, "Car sim");
+    HideMouse();
     ClearBitmap(g_window->bmp, g_colourWhite);
 
-    g_font = CreateFontAa("Arial", 5);
+    g_font = DfCreateFont("Arial", 13, 5);
 
     Car car;
     ClearBitmap(g_window->bmp, g_colourBlack);
@@ -289,7 +308,7 @@ int WINAPI WinMain(HINSTANCE _hInstance, HINSTANCE /*_hPrevInstance*/,
         car.Render();
 
         UpdateWin();
-        DfSleepMillisec(30);
+        DfSleepMillisec(10);
     }
 
     return 0;
