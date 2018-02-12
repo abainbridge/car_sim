@@ -11,6 +11,7 @@
 
 // Standard headers
 #include <algorithm>
+#include <math.h>
 
 
 double g_advanceTime = 0.0;
@@ -179,8 +180,18 @@ struct Car
             m_wheels[i].m_front = m_front;
         }
 
-        m_wheels[0].m_front.Rotate(m_steeringAngle);
-        m_wheels[1].m_front.Rotate(m_steeringAngle);
+        // Calculated different angles for each front wheel using the Ackerman
+        // principle. https://en.wikipedia.org/wiki/Ackermann_steering_geometry
+        double cornerRadius = len / tan(fabs(m_steeringAngle));
+        double outerWheelAngle = atan(len / (cornerRadius + halfFrontTrack * 2.0));
+        if (m_steeringAngle > 0.0) {
+            m_wheels[0].m_front.Rotate(m_steeringAngle);
+            m_wheels[1].m_front.Rotate(outerWheelAngle);
+        }
+        else {
+            m_wheels[0].m_front.Rotate(-outerWheelAngle);
+            m_wheels[1].m_front.Rotate(m_steeringAngle);
+        }
     }
 
     void AdvanceStep() {
