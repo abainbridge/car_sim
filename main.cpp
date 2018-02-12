@@ -147,10 +147,14 @@ struct Car
     Skidmarks m_skidmarks;
 
     Car() {
-        m_pos.Set(15.0, 15.0);
+        Init(0.0, 0.0);
+    }
+
+    void Init(double speed, double angVel) {
+        m_pos.Set(3.0, 40.0);
         m_front.Set(1.0, 0.0);
-        m_vel = m_front * 1.0;
-        m_angVel = 0.0;
+        m_vel = m_front * speed;
+        m_angVel = angVel;
         m_steeringAngle = 0.0;
         m_advanceTimeRemainder = 0.0;
 
@@ -224,6 +228,10 @@ struct Car
 
     void Advance()
     {
+        if (g_input.keyUps[KEY_SPACE]) {
+            Init(30.0, 2.0);
+        }
+
         const double MAX_STEERING_LOCK = 0.7;
         m_steeringAngle += g_input.mouseVelX * 0.002;
         if (m_steeringAngle > MAX_STEERING_LOCK) m_steeringAngle = MAX_STEERING_LOCK;
