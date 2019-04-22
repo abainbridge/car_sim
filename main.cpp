@@ -294,15 +294,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
     // Setup the window
     int width, height;
     GetDesktopRes(&width, &height);
-//    CreateWin(width - 200, height - 100, WT_WINDOWED, "Car sim");
-    CreateWin(width, height, WT_FULLSCREEN, "Car sim");
+    CreateWin(width - 200, height - 100, WT_WINDOWED, "Car sim");
+//    CreateWin(width, height, WT_FULLSCREEN, "Car sim");
     HideMouse();
-    ClearBitmap(g_window->bmp, g_colourWhite);
+    BitmapClear(g_window->bmp, g_colourWhite);
 
-    g_defaultFont = DfCreateFont("Arial", 13, 5);
+    g_defaultFont = FontCreate("Arial", 13, 5);
 
     Car car;
-    ClearBitmap(g_window->bmp, g_colourBlack);
+    BitmapClear(g_window->bmp, g_colourBlack);
     InputManagerAdvance();
 
     // Continue to display the window until the user presses escape or clicks the close icon
@@ -310,7 +310,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
     {
         InputManagerAdvance();
 
-        double now = DfGetTime();
+        double now = GetRealTime();
         g_advanceTime = now - g_frameStartTime;
         g_advanceTime = std::min(g_advanceTime, 0.1);
         g_frameStartTime = now;
@@ -319,12 +319,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
         car.Advance();
 
         // Render
-        ClearBitmap(g_window->bmp, g_colourBlack);
+        BitmapClear(g_window->bmp, g_colourBlack);
 
         car.Render();
 
         UpdateWin();
-        DfSleepMillisec(10);
+        SleepMillisec(1);
     }
 
     return 0;
